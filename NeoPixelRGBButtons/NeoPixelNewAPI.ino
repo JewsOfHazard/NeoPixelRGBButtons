@@ -1,15 +1,4 @@
-// NeoPixelTest
-// This example will cycle between showing four pixels as Red, Green, Blue, White
-// and then showing those pixels as Black.
-//
-// Included but commented out are examples of configuring a NeoPixelBus for
-// different color order including an extra white channel, different data speeds, and
-// for Esp8266 different methods to send the data.
-// NOTE: You will need to make sure to pick the one for your platform 
-//
-//
-// There is serial output of the current state so you can confirm and follow along
-//
+
 
 //#include <IRremote.h>
 //#include <IRremoteInt.h>
@@ -27,9 +16,7 @@ const uint8_t PixelPin = 3;  // make sure to set this to the correct pin, ignore
 
 #define colorSaturation 128
 
-// three element pixels, in different order and speeds
 NeoPixelBus<NeoGrbFeature, Neo800KbpsMethod> strip(PixelCount, PixelPin);
-//NeoPixelBus<NeoRgbFeature, Neo400KbpsMethod> strip(PixelCount, PixelPin);
 
 RgbColor red(colorSaturation, 0, 0);
 RgbColor green(0, colorSaturation, 0);
@@ -41,15 +28,15 @@ RgbColor black(0);
 int stepDelay = 10;
 int resetDelay = 500;
 
-int buttonTogglePin = 9;
+int bActiveModeButtons = 9;
+int bPreviousMode = 10;
+int bNextMode = 11;
 
 uint8_t mode = 0;
 
-int buttonToggleIsPressed = false;
-
 void setup()
 {
-    
+
     Serial.begin(9600);
     while (!Serial); // wait for serial attach
 
@@ -66,8 +53,13 @@ void setup()
     Serial.println("Running...");
    // irrecv.enableIRIn(); // Start the receiver
 
-    pinMode(buttonTogglePin, INPUT_PULLUP);
+    pinMode(bActiveModeButtons, INPUT_PULLUP);
+    pinMode(bNextMode, INPUT_PULLUP);
+    pinMode(bPreviousMode, INPUT_PULLUP);
 }
+
+bool bNextModeOn = false;
+bool bPreviousModeOn = false;
 
 void loop()
 {
@@ -75,23 +67,41 @@ void loop()
   //Serial.println(resultsNum);
   /*
   if (irrecv.decode(&results) && results.decode_type == UNKNOWN){ // have we received an IR signal?
-    
+
     resultsNum = results.value;
     if(results.value != 0) Serial.println(results.value, HEX);
     irrecv.resume();
   }
   */
-  
-  if(digitalRead(buttonTogglePin) == LOW && !buttonToggleIsPressed)
+
+
+  //NOTE: While this button is pressed, the RGB strip will not update until it is depressed
+  //TODO: Add the digital display to the mix so we can show the mode is changing (or what mode it is)
+  while(digitalRead(bActiveModeButtons) == LOW) //We are holding the button that lets us use the other buttons
   {
-    mode = mode + 1;
-    buttonToggleIsPressed = true;
+    if(digitalRead(bNextMode) == LOW && !bNextModeOn)
+    {
+      mode = mode + 1;
+      bNextModeOn = true;
+    }
+    else if(digitalRead(bNextMode) == HIGH)
+    {
+      bNextModeOn = false;
+    }
+
+    if(digitalRead(bPreviousMode) == LOW && !bPreviousModeOn)
+    {
+      if(mode > 0) mode = mode - 1;
+      bNextModeOn = true;
+    }
+    else if(digitalRead(bPreviousMode) == HIGH)
+    {
+      bNextModeOn = false;
+    }
+
   }
-  else if(digitalRead(buttonTogglePin) == HIGH)
-  {
-    buttonToggleIsPressed = false;
-  }
-  
+
+
 
   switch(mode)
   {
@@ -110,7 +120,7 @@ void loop()
     case 3:
       singleColorSnake(resetDelay, stepDelay, red);
       break;
-      
+
     case 4:
       singleColorSnake(resetDelay, stepDelay, green);
       break;
@@ -118,15 +128,15 @@ void loop()
     case 5:
       singleColorSnake(resetDelay, stepDelay, blue);
       break;
-      
+
     default:
       clearStrip();
       mode = 0;
       break;
   }
-  
 
-  
+
+
 /*
   switch(resultsNum)
   {
@@ -212,7 +222,7 @@ void singleColorChase(int resetDelay, int stepDelay)
       delay(stepDelay);
     }
   }
-  
+
   //delay(resetDelay);
 }
 
@@ -226,10 +236,9 @@ void singleColorSnake(int resetDelay, int stepDelay, RgbColor color)
       if(x < 120) strip.SetPixelColor(x, color);
       if(x > 0 && x < 121) strip.SetPixelColor(x-1, color);
       if(x > 1 && x < 122) strip.SetPixelColor(x-2, color);
-      
+
     }
     delay(stepDelay);
     strip.Show();
   }
 }
-
